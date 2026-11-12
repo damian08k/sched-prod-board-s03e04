@@ -67,15 +67,28 @@ await check('SCHED-4512 loader shows until incidents load', async (page) => {
   assert.equal(await page.getByTestId('loader').count(), 0);
 });
 
-await check('SCHED-4511 + 4513 new incident on top without reload, every 2 s', async (page) => {
+await check('SCHED-4515 list holds still; "N new" bar brings new incidents in on click; refresh every 2 s', async (page) => {
+  await page.addInitScript(() => {
+    window.__removed = 0;
+    new MutationObserver((rs) => rs.forEach((r) => r.removedNodes.forEach((n) => n.nodeType === 1 && n.matches('[data-testid="incident-row"]') && window.__removed++))).observe(document, { childList: true, subtree: true });
+  });
   const state = { incidents: [inc('INC-2', '2026-11-12T03:02:00.000Z'), inc('INC-1', '2026-11-12T03:01:00.000Z')], polls: [], acks: [] };
   await fakeApi(page, state);
   await page.goto(base);
   await page.getByTestId('incident-row').first().waitFor();
   assert.deepEqual(await ids(page), ['INC-2', 'INC-1']);
-  state.incidents = [inc('INC-3', '2026-11-12T03:03:00.000Z'), ...state.incidents];
-  await page.locator('[data-id="INC-3"]').waitFor({ timeout: 3000 });
-  assert.deepEqual(await ids(page), ['INC-3', 'INC-2', 'INC-1']);
+  assert.equal(await page.getByTestId('new-bar').isVisible(), false);
+  const y0 = (await page.locator('[data-id="INC-2"]').boundingBox()).y;
+  state.incidents = [inc('INC-4', '2026-11-12T03:04:00.000Z'), inc('INC-3', '2026-11-12T03:03:00.000Z'), ...state.incidents];
+  await page.getByTestId('new-bar').waitFor({ state: 'visible', timeout: 3000 });
+  assert.equal(await page.getByTestId('new-bar').textContent(), '2 new incidents · show');
+  assert.deepEqual(await ids(page), ['INC-2', 'INC-1']);
+  assert.equal((await page.locator('[data-id="INC-2"]').boundingBox()).y, y0, 'the bar moved the list');
+  await page.getByTestId('new-bar').click();
+  assert.deepEqual(await ids(page), ['INC-4', 'INC-3', 'INC-2', 'INC-1']);
+  assert.equal(await page.getByTestId('new-bar').isVisible(), false);
+  assert.equal(await page.locator('[data-id="INC-4"] [data-testid="ack"]').count(), 1);
+  assert.equal(await page.evaluate(() => window.__removed), 0);
   await page.waitForTimeout(4500);
   const gaps = state.polls.slice(1).map((t, i) => t - state.polls[i]);
   assert.ok(gaps.every((g) => g >= 1900 && g < 3000), `poll gaps ${gaps}`);
@@ -97,6 +110,20 @@ await check('SCHED-4511 Ack acks that incident and the mark survives a refresh',
   assert.equal(await page.locator('[data-id="INC-1"] [data-testid="ack"]').count(), 0);
   assert.equal(await page.locator('[data-id="INC-2"] [data-testid="ack"]').count(), 1);
 });
+
+await check('SCHED-4515 ack like a person while a new incident lands: the ack goes to the row aimed at', async (page) => {
+  const state = { incidents: [inc('INC-3', '2026-11-12T03:03:00.000Z'), inc('INC-2', '2026-11-12T03:02:00.000Z'), inc('INC-1', '2026-11-12T03:01:00.000Z')], polls: [], acks: [] };
+  await fakeApi(page, state);
+  await page.goto(base);
+  const box = await page.locator('[data-id="INC-3"] [data-testid="ack"]').boundingBox();
+  const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+  await page.mouse.move(x, y, { steps: 8 });
+  state.incidents = [inc('INC-9', '2026-11-12T03:09:00.000Z'), ...state.incidents];
+  await page.getByTestId('new-bar').waitFor({ state: 'visible', timeout: 3000 });
+  await page.mouse.click(x, y);
+  await page.locator('[data-id="INC-3"] [data-testid="acked"]').waitFor({ timeout: 3000 });
+  assert.deepEqual(state.acks.map((a) => a.id), ['INC-3']);
+}, { viewport: { width: 1280, height: 800 } });
 
 for (const [zone, locale, expect] of [
   ['Pacific/Auckland', 'en-NZ', /12\/11\/2026, 0?4:03/],

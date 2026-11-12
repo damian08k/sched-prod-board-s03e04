@@ -6,6 +6,7 @@ const list = document.querySelector('[data-testid="incident-list"]');
 const loader = document.querySelector('[data-testid="loader"]');
 const empty = document.querySelector('[data-testid="empty"]');
 const status = document.querySelector('.status');
+const newBar = document.querySelector('[data-testid="new-bar"]');
 const updated = document.querySelector('.updated'); // shows on-call that the board is current (R4)
 
 /** id -> <li>. Rows are kept across refreshes, so an acked mark and a click in flight survive them. */
@@ -94,31 +95,57 @@ function updateRow(li, i) {
   }
 }
 
-/** R1: newest first; new rows go on top, existing rows are moved, not rebuilt. */
-function render(incidents) {
-  const seen = new Set();
-  let before = list.firstChild;
-  for (const i of incidents) {
-    seen.add(i.id);
-    let li = rows.get(i.id);
-    if (!li) {
-      li = createRow(i);
-      rows.set(i.id, li);
-    }
+/** Incidents that came in after the list was on screen, newest first, waiting behind the "N new" bar. */
+let pending = [];
+
+const newest = (a, b) => (a.openedAt < b.openedAt ? 1 : a.openedAt > b.openedAt ? -1 : 0);
+
+/** Puts incidents on top of the list, newest first. Rows already on screen are never moved or removed. */
+function prepend(incidents) {
+  const first = list.firstChild;
+  for (const i of [...incidents].sort(newest)) {
+    const li = createRow(i);
+    rows.set(i.id, li);
     updateRow(li, i);
-    if (li !== before) list.insertBefore(li, before);
-    before = li.nextSibling;
+    list.insertBefore(li, first);
   }
-  for (const [id, li] of rows) {
-    if (!seen.has(id)) {
-      li.remove();
-      rows.delete(id);
-    }
+}
+
+/**
+ * R1 (as product decided, 2026-11-12): the list holds still while it is on screen. Rows on screen are
+ * updated in place; new incidents wait behind the "N new" bar and come in when on-call clicks it.
+ */
+function render(incidents) {
+  const fresh = [];
+  for (const i of incidents) {
+    const li = rows.get(i.id);
+    if (li) updateRow(li, i);
+    else if (!pending.some((p) => p.id === i.id)) fresh.push(i);
+    else pending = pending.map((p) => (p.id === i.id ? i : p));
   }
-  const none = incidents.length === 0;
+  if (rows.size === 0) {
+    prepend([...pending, ...fresh]); // nothing on screen yet, so nothing can move under the pointer
+    pending = [];
+  } else {
+    pending = [...pending, ...fresh].sort(newest);
+  }
+  showNewBar();
+  const none = rows.size === 0;
   empty.hidden = !none;
   list.hidden = none;
 }
+
+/** The bar sits in a slot of fixed height, so showing it never moves the list either. */
+function showNewBar() {
+  newBar.hidden = pending.length === 0;
+  newBar.textContent = pending.length === 1 ? '1 new incident · show' : `${pending.length} new incidents · show`;
+}
+
+newBar.addEventListener('click', () => {
+  prepend(pending);
+  pending = [];
+  showNewBar();
+});
 
 let statusTimer;
 function showStatus(text) {
