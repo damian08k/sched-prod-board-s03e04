@@ -1,0 +1,5 @@
+{
+  "name": "sched-prod-board-s03e04",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./dist" }
+}
