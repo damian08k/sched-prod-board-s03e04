@@ -6,6 +6,7 @@ const list = document.querySelector('[data-testid="incident-list"]');
 const loader = document.querySelector('[data-testid="loader"]');
 const empty = document.querySelector('[data-testid="empty"]');
 const status = document.querySelector('.status');
+const updated = document.querySelector('.updated'); // shows on-call that the board is current (R4)
 
 /** id -> <li>. Rows are kept across refreshes, so an acked mark and a click in flight survive them. */
 const rows = new Map();
@@ -132,6 +133,7 @@ async function refresh() {
   try {
     const page = await fetchIncidents();
     render(page.incidents);
+    updated.textContent = `updated ${localTimeShort(page.updatedAt || new Date().toISOString())}`;
     if (!loaded) {
       loaded = true;
       loader.remove(); // R3: gone once incidents load
