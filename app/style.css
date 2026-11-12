@@ -3,7 +3,7 @@ header, main, footer { padding: 12px 24px; }
 h1 { margin: 0; font-size: 22px; }
 .sub { margin: 2px 0 0; color: #666; }
 .list { list-style: none; margin: 0; padding: 0; max-width: 960px; }
-.row { display: grid; grid-template-columns: 90px 50px 1fr 200px auto; gap: 12px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #e5e5e5; background: #fff; }
+.row { display: grid; grid-template-columns: 90px 50px 1fr 200px 130px; gap: 12px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #e5e5e5; background: #fff; }
 .row .id { font-family: ui-monospace, monospace; }
 .row.sev1 .sev { color: #b00020; font-weight: 600; }
 .row.sev2 .sev { color: #a15c00; }
@@ -13,9 +13,9 @@ footer { color: #777; font-size: 13px; }
 .loader::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; border: 2px solid #ccc; border-top-color: #555; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .status { margin: 0 0 8px; padding: 8px 12px; background: #fff4e5; color: #6b3d00; border-radius: 4px; max-width: 936px; }
-.ack { font: inherit; padding: 4px 14px; border: 1px solid #1d1d1f; border-radius: 4px; background: #fff; cursor: pointer; }
+.ack { justify-self: end; font: inherit; padding: 4px 14px; border: 1px solid #1d1d1f; border-radius: 4px; background: #fff; cursor: pointer; }
 .ack:hover { background: #1d1d1f; color: #fff; }
 .ack:disabled { opacity: 0.5; cursor: default; }
-.acked { color: #1b7a3a; font-weight: 600; font-size: 13px; }
+.acked { justify-self: end; color: #1b7a3a; font-weight: 600; font-size: 13px; }
 .row.is-acked { background: #f3faf5; }
 footer code { font-size: 12px; }
